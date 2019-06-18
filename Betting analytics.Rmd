@@ -1,0 +1,294 @@
+---
+title: '**Betting analytics**'
+runtime: shiny
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r , echo=FALSE}
+data<- read.csv("C:/Users/dtuiran/Documents/GitHub/group-assignment-open-source-programming-bwin-group-7/Group Assignment/datamart.csv")
+```
+
+
+## **Bwin Interactive Entertainment**
+
+BWin Interactive Entertainment is an online gambling company,headquartered in Vienna, Austria.Bwin offers different kind of products and services from where we can mention: Sports betting, Poker, Bingo, Casino games, Soft games, among others.
+
+The company is interested in creating knowledge from their databases to support their future decision making and operations continuous improvement. 
+
+To reach this Bwin provide data that contains demographics information about customers, daily aggregation operations for Sports book, Casino and games; and poker chip operations. These data sets give us evidence from the first eight months of the first prospective longitudinal, real-time, Internet sports betting behavior study that took place from February 1, 2005 through September 30, 2005.
+
+
+### **Customers description**
+
+* Our customers based is formed by 42.649 gamblers from all around the world; being Europe the region with more gamblers and representing 93.7 % of our total customers.
+
+* Regarding age distribution, customers are between the range of ages from 14 to 95 years old, however, the highest concentration of customers is in 24 years old with 2.208 customers belonging to this level.
+
+* Women are not very representative in our customers data base,around 8% of customers are women.
+
+Now we can explore different demographics features of our customers related to their demographics.
+
+```{r, echo=FALSE, message = FALSE}
+
+library(shiny)
+library(plotly)
+library(shinyWidgets)
+library(ggvis)
+library(dplyr)
+
+
+
+ui3 <- fluidPage(
+  
+  
+  # Inputs
+  sidebarPanel(
+    
+    pickerInput('continent', 'Select Continents:', choices = c("Africa", "Asia",
+                                                                       "Europe", "Latin America and Caribbean",
+                                                                       "North America" , "Oceania"),
+                                                                        options = list(`actions-box` = TRUE),
+                                                                        multiple= TRUE),
+  
+    
+    hr(),                # Horizontal line for visual separation
+    
+    
+    # Select which types of gender to plot
+    checkboxGroupInput(inputId = "selected_gender",
+                       label = "Select gender:",
+                       choices = c("M", "F"),
+                       selected = c("M","F") ),
+    
+    hr(),                # Horizontal line for visual separation
+    
+    
+    sliderInput("xbins", "Range: ", 
+                min = 10, max = 100, value = c(18,75), width = 250)
+    
+    
+  ),
+  
+  mainPanel(
+    plotlyOutput("plotcontinent"),
+    hr(),
+    plotlyOutput("agehist")
+  )
+)
+
+server3 <- function(input, output) {
+  
+  gender_selected <- reactive({
+    req(input$selected_gender) # ensure availablity of value before proceeding
+    filter(data,Gender %in% input$selected_gender)
+  })
+  
+
+  continent_selected <- reactive({
+    req(input$continent) # ensure availablity of value before proceeding
+    filter(gender_selected(),Continents %in% input$continent)
+  })
+  
+
+
+  # renderPlotly() also understands ggplot2 objects!
+
+    output$plotcontinent <- renderPlotly({
+      p <- continent_selected() %>%
+        group_by(Continents) %>%
+        summarize(count = n()) %>%
+        plot_ly(labels = ~Continents, values = ~count) %>%
+        add_pie(hole = 0.6) %>%
+        layout(title = "Customers per Continent",  showlegend = T,
+               xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+               yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+    })
+    
+    
+    
+    output$agehist <- renderPlotly({
+      plot_ly(continent_selected(), x = ~AGE,type= "histogram" , xbins=list(
+        end = input$xbins[2], 
+        size = 1, 
+        start = input$xbins[1]))%>%
+        layout(title = "Age distribution")
+      
+    })
+  }
+
+
+shinyApp(ui3, server3)
+
+  
+```
+
+
+### **Products generalities**
+
+Bwin offers eight different products to its gamblers.To be able to have the date in a customer level base we first star by grouping the products in for categories as follows, with this we wanted to avoid having to many variables for products not that relevant in number of players for the online gambling site. We ended up with four groups of products:
+
+* Sports Book
+* Poker 
+* Casino
+* Games
+
+Below the detail procedure:
+
+
+
+```{r eval=FALSE}
+#Creating a new Product Column Type to group products by Sports Book, Poker, Casino and Games
+dailyaggregation$productType <-ifelse(dailyaggregation$ProductID %in% c(1,2),"SportsBook",
+                                       ifelse(dailyaggregation$ProductID == 3,"Poker",
+                                              ifelse(dailyaggregation$ProductID %in% c(4,5,8),"Casino",
+                                                     ifelse(dailyaggregation$ProductID %in% c(6,7),"Games",0))))
+
+```
+
+
+* 89% of our customers are only playing one kind of product with the online website, there is a huge opportunity to develop the potential of all those customers and to persuade them to play the rest of products the online gambling website offers.
+
+* The route of access or application that offers Bwin more number of customer is BETANDWIND.DE, around 52% of our customers come from this application.
+
+
+
+Next, you can find a graphic visualization of the performance of the products analyzed:
+
+```{r, echo=FALSE, message = FALSE}
+
+
+library(shiny)
+library(plotly)
+library(shinyWidgets)
+library(dplyr)
+
+ui2 <- fluidPage(
+    # Inputs
+    sidebarPanel(
+      
+      selectInput('xall', 'Select variable for X axis:', choices = c("Bets" = "total_bets" ,"Stakes"= "total_stakes", "Winnings" = "total_winnings" ), selected = "total_stakes"),
+      selectInput('yall', 'Select variable for Y axis:', choices = c("Bets" ="total_bets" ,"Stakes"= "total_stakes", "Winnings" = "total_winnings" ), selected = "total_winnings"),
+      
+      hr(),                # Horizontal line for visual separation
+      
+     
+    # Select which types of gender to plot
+    checkboxGroupInput(inputId = "selected_number",
+                       label = "Select number of products:",
+                       choices = c("1" , "2", "3", "4"),
+                       selected = c("1" , "2", "3", "4") ),
+ 
+    hr(),                # Horizontal line for visual separation
+   
+    pickerInput(inputId = "selected_app",
+                       label = "Select Application:",
+                       choices = c("BALLS OF FIRE" ,"BETANDWIN CASINO", "BETANDWIN POKER",
+                                   "BETANDWIN.DE" ,  "BETEUROPE GAMES"  , "BETEUROPE POKER" ,"BETEUROPE.COM" ,"BETOTO CASINO",
+                                   "BETOTO POKER" ,"BETOTO.COM" ,"BOF.BETEUROPE.COM" ,"BOF.PLAYIT.COM", "CASINO.BETEUROPE.COM",
+                                   "CASINO.PLAYIT.COM",   "LOTTERY.BETOTO.COM", "PLAYIT GAMES" , "PLAYIT POKER" , "PLAYIT.COM",
+                                   "WAP.BETANDWIN.COM",  "WAP.BETANDWIN.DE"),
+                        options = list(`actions-box` = TRUE),
+                        multiple= TRUE)
+
+    ),
+  
+  mainPanel(
+    plotlyOutput("allP"),
+    hr(),
+    fluidRow(
+    column(width = 5, plotlyOutput("plotnumber")),
+    column(width = 5, plotlyOutput("plotapp")))
+)
+)
+
+server2 <- function(input, output) {
+  
+  number_selected <- reactive({
+    req(input$selected_number) # ensure availablity of value before proceeding
+    filter(data,numberofProducts %in% input$selected_number)
+  })
+  
+  # renderPlotly() also understands ggplot2 objects!
+  output$plotnumber <- renderPlotly({
+    p <- number_selected() %>%
+      group_by(numberofProducts) %>%
+      summarize(count = n()) %>%
+      plot_ly(labels = ~numberofProducts, values = ~count) %>%
+      add_pie(hole = 0.6)%>%
+      layout(showlegend = FALSE , title= "Total Number of products")
+  })
+  
+  app_selected <- reactive({
+    req(input$selected_app) # ensure availablity of value before proceeding
+    filter(number_selected(),Application.Description %in% input$selected_app)
+  })
+  
+  output$plotapp <- renderPlotly({
+    plot_ly(app_selected(), x = ~Application.Description)
+  })
+  
+  output$allP <- renderPlotly({
+    # build graph with ggplot syntax
+    p <- ggplot(app_selected(), aes_string(x = input$xall, y = input$yall)) + 
+      geom_point() + geom_smooth(method=lm)
+  })
+  
+}
+
+shinyApp(ui2, server2)
+```
+
+
+
+
+### **Variables created**
+
+Besides demographics and transactions variables, we created new metrics to better describe and understand gamblers. 
+Marketing and RFM variables were created for each one of the group of products previously defined:
+
+* **Number of products:** Count the number of products for which each customers have a first active days, meaning the number of products the customers have played since its registration date.
+
+*	**First active date:** refers to the date when every gambler first plays the specific product.
+
+*	**Last active date:** refers to the last date in which every gambler plays the specific product.
+
+*	**Gross Gaming Revenue (GGR):** is the amount staked minus the winnings returned to players for every product. This variable is a true measure of the economic value of gambling.
+
+*	**Days active:** is the number of dates that a customer has been active playing an specific product. It is calculated as the difference between the last active date and the first active date.
+
+* **Recency:** Measure of the time elapsed since the last active date of every customer and the end of the period of analysis.
+
+* **Winning Recency:** Measure of the time elapsed since the last active date of every customer and the end of the period of analysis, having winnings greater than zero, it means how many days since last winning for each group of products.
+
+* **Losing Recency:** Measure of the time elapsed since the last active date of every customer and the end of the period of analysis, having winnings greater equals to zero, it means how many days since last winning for each group of products.
+
+* **Lenght of subscription:** Number of days since the last active date and the registration date. Shows the length in days of customer's relation with the online gambling site.
+
+* **Winning bets:** Total number of bets, in which the customer had won, when playing each type of products.
+
+* **Monetary Value (Lenght of Subscription):** The monetary value generated per customer created based on the Length of Subscription. This has been calculated using the Gross Gaming Revenue generated per customer from each type of product divided by the Length of Subscription of the customer.   
+
+* **Monetary Value (Winnings):** The monetary value generated per customer created based on the Winnings. This has been calculated using the Total Winnings per customer from each type of product divided by the Length of Subscription of the customer.
+
+* **Monetary Value (Stakes):** The monetary value generated per customer created based on the Stakes. This has been calculated using the Total Stakes per customer from each type of product divided by the Length of Subscription of the customer.
+
+### **Visual analytics** 
+
+For further information about Bwin online gamblers you can visit our Shiny app [Betting Analytics](https://jdewgun.shinyapps.io/BWinBettingAnalytics/) where you will find:
+
+* **Data table:** Contains the detailed information for each one of BWin 42.649 online gamblers. You will find 81 informative variables about demographics, play transactions and marketing metrics of interest about customers gambling behavior.
+
+* **Visualizing Demographics:** Demographics knowledge of BWin customers, where do they come from, gender, and age distribution.
+
+* **Visualizations of sports book data, Poker, Casino and Games:** Relationship between betting, winnings and stakes for each one of the products group.
+
+* **Visualising product spread:** We present for all products the number of users, the application website where they came from and the relationship between total winnings, bets and stakes.
+
+
+
